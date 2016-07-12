@@ -1,0 +1,186 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAUnpQJwdEvEcoJVKVSdFfzbNzOr0sYu5g"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <title>TravelMap</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            height: 100%;
+            width: 50%;
+            float:left;
+        }
+
+       #locations {
+            float:right;
+        }
+
+        input {
+          display: inline-block;
+          float: left;
+        }
+    </style>
+    <script>
+
+        var map;
+        var markersArray = [];
+        $(document).ready(function () {
+            initMap()
+            google.maps.event.addListener(map, 'click', function (event) {
+            placeMaker(event.latLng);
+            });
+            $('#calcasync').on('click', getdistance);
+        });
+        //initialize google map
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 31.788670, lng: 35.197967 },
+                zoom: 13
+            });
+        }
+
+        //gets dtat from server
+            function getdistance() {
+                $.getJSON('/calc_distance', {
+                    wage: $('#wage').val(),
+                    originlat: $('#originlat').val(),
+                    originlong: $('#originlong').val(),
+                    destlat: $('#destlat').val(),
+                    destlong: $('#destlong').val()
+                }, function (data) {
+                    fillresult(data);
+                });
+                return false;
+            };
+
+        //fills rasult table
+            function fillresult(data) {
+            $('#carres').html(parseFloat(data.carres).toFixed(2));
+            $('#busres').html(parseFloat(data.busres).toFixed(2));
+            $('#footres').html(parseFloat(data.footres).toFixed(2));
+            $('#taxires').html(parseFloat(data.taxires).toFixed(2));
+            }
+
+        //loads markers and update input values correspondingly
+            function placeMaker(location) {
+                var newmarker = new google.maps.Marker({
+                    position: location,
+                    map: map
+                });
+                var infocontent = 'lat:' + location.lat().toFixed(4).toString()
+                                    + 'long:' + location.lng().toFixed(4).toString();
+                var markerinfo = new google.maps.InfoWindow({ content: infocontent });
+                markerinfo.open(map, newmarker);
+
+                var fromVal = document.getElementById('originlat').value;
+                var toVal = document.getElementById('destlat').value;
+
+                if (fromVal == '0') {
+                    //document.getElementById('originlat').value = newmarker.getPosition().lat();
+                    $('#originlat').val(newmarker.getPosition().lat().toFixed(4));
+                    $('#originlong').val(newmarker.getPosition().lng().toFixed(4));
+                    markersArray.push(newmarker);//
+                }
+                else if (toVal == '0') {
+                    markersArray.push(newmarker);
+                    $('#destlat').val(newmarker.getPosition().lat().toFixed(4)).trigger('change');
+                    $('#destlong').val(newmarker.getPosition().lng().toFixed(4)).trigger('change');
+                }
+                else //to != 0 two points already entered...
+                {
+                    // from = to
+                    $('#originlat').val($('#destlat').val());
+                    $('#originlong').val($('#destlong').val());
+                    //to == new
+                    $('#destlat').val(newmarker.getPosition().lat().toFixed(4)).trigger('change');
+                    $('#destlong').val(newmarker.getPosition().lng().toFixed(4)).trigger('change');
+                    // markersArray is a queue of two elements
+                    var oldmarker = markersArray.shift();
+                    markersArray.push(newmarker);
+                    oldmarker.setMap(null);
+                }
+            };
+    </script>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="locations">
+        <h2>Welcome to our cost calculator</h2>
+        <h3>Please choose two spots on map nter howrly wage</h3>
+        <table id="inputtbl">
+            <tr>
+                <td>
+                    <label for="wage">Wage</label>
+                    <input type="number" name="wage" id="wage" min="0" max="500" value="0.0">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="originlat">OriginLat</label>
+                    <input type="text" id="originlat" value="0" />
+                </td>
+                <td>
+                    <label for="originlong">OriginLong</label>
+                    <input type="text" id="originlong" value="0" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="destlat">DestinationLat</label>
+                    <input type="text" id="destlat" value="0" />
+                </td>
+                <td>
+                    <label for="destlong">DestinationLong</label>
+                    <input type="text" id="destlong" value="0" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <button id="calcasync">CalculateCost</button>
+                </td>
+            </tr>
+        </table>
+
+        <table id="restbl">
+            <thead>
+                <tr>
+                    <td>
+                        Travel Method
+                    </td>
+                    <td>
+                        Cost
+                    </td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="carRow">
+                    <td>ByCar</td>
+                    <td id="carres"></td>
+                </tr>
+                <tr id="busrow">
+                    <td>ByBus</td>
+                    <td id="busres"></td>
+                </tr>
+                <tr id="taxirow">
+                    <td>ByTaxi</td>
+                    <td id="taxires"></td>
+                </tr>
+                <tr id="footrow">
+                    <td>ByFoot</td>
+                    <td id="footres"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
